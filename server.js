@@ -307,6 +307,19 @@ app.post("/api/stkpush", async (req, res) => {
   }
 });
 
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.error('Error destroying session:', err);
+            return res.status(500).send('Error logging out');
+        }
+        res.clearCookie('connect.sid'); // Clear session cookie
+        res.redirect('/login');          // Redirect to login page
+    });
+});
+
+
 // Run server
 const PORT = process.env.PORT ;
 app.listen(PORT,'0.0.0.0', () => console.log(`Server running on port ${PORT}`));
