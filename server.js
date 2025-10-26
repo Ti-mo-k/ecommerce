@@ -306,6 +306,11 @@ app.post("/api/stkpush", async (req, res) => {
     res.status(500).json({ success: false, message: "STK Push failed" });
   }
 });
+app.post('/callback', (req, res) => {
+  console.log('📩 Callback from Safaricom:', req.body);
+  res.status(200).send('OK');
+});
+
 
 // Logout route
 app.get('/logout', (req, res) => {
