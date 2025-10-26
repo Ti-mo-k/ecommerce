@@ -25,7 +25,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', 1); // if behind a proxy like Render
 
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SECRET_KEY,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 30 * 60 * 1000 }
