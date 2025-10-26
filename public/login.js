@@ -26,14 +26,14 @@ document.addEventListener('DOMContentLoaded', () =>{
 
 
         try {
-            const response = await fetch('/login',{
-                method:'POST',
-                headers:{
-                    'Content-Type': 'application/json'
-                },
-                body:JSON.stringify({email,password})
+            const BASE_URL = window.location.origin; // automatically uses current domain
 
-            })
+   const response = await fetch(`${BASE_URL}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+});
+
 
             if(response.ok){
                 const responseData = await response.json();

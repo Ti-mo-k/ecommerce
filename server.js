@@ -22,13 +22,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// managing user session
+app.set('trust proxy', 1); // if behind a proxy like Render
+
 app.use(session({
-    secret: 'your-secret-key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: true, maxAge: 30 * 60 * 1000 } // 30 mins
+    cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 30 * 60 * 1000 }
 }));
+
+
 
 // database connection
 const db = mysql.createConnection({
