@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout</title>
+  <link rel="stylesheet" href="checkout.css">
+</head>
+<body>
+  <div class="checkout-container">
+    <h2>Checkout</h2>
+    <div id="totalDisplay"></div>
+
+    <form id="checkoutForm">
+      <label for="name">Full Name:</label>
+      <input type="text" id="name" required>
+
+      <label for="address">Delivery Address:</label>
+      <input type="text" id="address" required>
+
+      <label for="phone">M-Pesa Number:</label>
+      <input type="text" id="phone" placeholder="2547XXXXXXXX" required>
+
+      <button type="submit" id="payBtn">Pay Now</button>
+    </form>
+  </div>
+
+  <script>
+    // 1️⃣ Load total from cart
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    document.getElementById("totalDisplay").innerText = `Total: KES ${total}`;
+
+    // 2️⃣ Handle form submit
+    document.getElementById("checkoutForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const phone = document.getElementById("phone").value.trim();
+      const name = document.getElementById("name").value.trim();
+      const address = document.getElementById("address").value.trim();
+
+      if (!phone.startsWith("254")) {
+        alert("Please enter a valid M-Pesa number starting with 254");
+        return;
+      }
+
+      const order = { name, address, phone, total };
+
+      // Send to backend for STK push
+      try {
+        const response = await fetch("http://localhost:5000/api/stkpush", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(order)
+        });
+
+        const data = await response.json();
+        alert(data.message || "STK Push Sent! Check your phone to complete payment.");
+      } catch (err) {
+        console.error(err);
+        alert("Payment request failed.");
+      }
+    });
+  </script>
+</body>
+</html>

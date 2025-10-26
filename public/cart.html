@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Cart</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+header h2 {
+    text-align: center;
+}
+#cartContainer {
+    max-width: 600px;
+    margin: auto;
+    border: 1px solid #ccc;
+    padding: 20px;
+    border-radius: 10px;
+}
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+.cart-item button {
+    padding: 5px 10px;
+    margin-left: 5px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.qty-btn {
+    background-color: #2196F3;
+}
+#cartTotal {
+    margin-top: 20px;
+    text-align: right;
+}
+#checkoutBtn {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 20px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+</style>
+</head>
+<body>
+<header>
+    <h2>Your Cart</h2>
+</header>
+
+<div id="cartContainer">
+    <div id="cartItems"></div>
+    <div id="cartTotal"></div>
+    <button id="checkoutBtn">Proceed to Checkout</button>
+</div>
+
+<script>
+// Load Cart
+function loadCart() {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    let container = document.getElementById("cartItems");
+    let totalDiv = document.getElementById("cartTotal");
+    container.innerHTML = "";
+    let total = 0;
+
+    if (cart.length === 0) {
+        container.innerHTML = "<p>Your cart is empty</p>";
+        totalDiv.innerHTML = "";
+        return;
+    }
+
+    cart.forEach((item, index) => {
+        let subtotal = item.price * item.quantity;
+        total += subtotal;
+
+        container.innerHTML += `
+            <div class="cart-item">
+                <span>${item.name}</span>
+                <span>KES ${item.price}</span>
+                <span>
+                    Qty: 
+                    <button class="qty-btn" onclick="decreaseQty(${index})">-</button>
+                    ${item.quantity}
+                    <button class="qty-btn" onclick="increaseQty(${index})">+</button>
+                </span>
+                <span>Subtotal: KES ${subtotal}</span>
+                <button onclick="removeFromCart(${index})">Remove</button>
+            </div>
+        `;
+    });
+
+    totalDiv.innerHTML = `<h3>Total: KES ${total}</h3>`;
+}
+
+// Remove item
+function removeFromCart(index) {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    cart.splice(index, 1);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    loadCart();
+}
+
+// Increase quantity
+function increaseQty(index) {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    cart[index].quantity += 1;
+    localStorage.setItem("cart", JSON.stringify(cart));
+    loadCart();
+}
+
+// Decrease quantity
+function decreaseQty(index) {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    if(cart[index].quantity > 1){
+        cart[index].quantity -= 1;
+    } else {
+        cart.splice(index, 1); // remove if quantity is 1
+    }
+    localStorage.setItem("cart", JSON.stringify(cart));
+    loadCart();
+}
+
+// Proceed to checkout
+document.getElementById("checkoutBtn").addEventListener("click", async () => {
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    if (cart.length === 0) {
+        alert("Your cart is empty.");
+        return;
+    }
+
+    try {
+        const response = await fetch('/check-login');
+        const data = await response.json();
+
+        if (!data.loggedIn) {
+            alert("Please login to proceed to checkout.");
+            window.location.href = "login.html";
+        } else {
+            // pass total amount if you want
+            const total = cart.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
+            sessionStorage.setItem('totalAmount', total); 
+            window.location.href = "checkout.html";
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error checking login status.");
+    }
+});
+
+window.onload = loadCart;
+
+</script>
+</body>
+</html>

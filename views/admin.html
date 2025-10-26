@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Upload Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      padding: 20px;
+    }
+
+    h2 {
+      background: #333;
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    form {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 25px;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .message {
+      margin-top: 10px;
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Add Product</h2>
+  <form id="productForm">
+    <label>Name:</label>
+    <input type="text" id="pname" required />
+    <label>Price:</label>
+    <input type="number" id="pprice" required />
+    <label>Description:</label>
+    <textarea id="pdesc"></textarea>
+    <label>Image URL:</label>
+    <input type="text" id="pimage" required />
+    <label>Category:</label>
+    <select id="pcategory">
+      <option value="clothes">Clothes</option>
+      <option value="furniture">Furniture</option>
+      <option value="electronics">Electronics</option>
+      <option value="grocery">Grocery</option>
+    </select>
+    <button type="submit">Upload Product</button>
+    <p id="productMsg" class="message"></p>
+  </form>
+
+  <h2>Add Offer</h2>
+  <form id="offerForm">
+    <label>Name:</label>
+    <input type="text" id="oname" required />
+    <label>Offer Price:</label>
+    <input type="number" id="oprice" required />
+    <label>Description:</label>
+    <textarea id="odesc"></textarea>
+    <label>Image URL:</label>
+    <input type="text" id="oimage" required />
+    <label>Category:</label>
+    <select id="ocategory">
+      <option value="clothes">Clothes</option>
+      <option value="furniture">Furniture</option>
+      <option value="electronics">Electronics</option>
+      <option value="grocery">Grocery</option>
+    </select>
+    <label>Start Date:</label>
+    <input type="date" id="ostart" />
+    <label>End Date:</label>
+    <input type="date" id="oend" />
+    <button type="submit">Upload Offer</button>
+    <p id="offerMsg" class="message"></p>
+  </form>
+
+  <script>
+    // Add product
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const product = {
+        name: document.getElementById('pname').value,
+        price: document.getElementById('pprice').value,
+        description: document.getElementById('pdesc').value,
+        image_url: document.getElementById('pimage').value,
+        category: document.getElementById('pcategory').value
+      };
+
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(product)
+      });
+
+      const data = await res.json();
+      document.getElementById('productMsg').textContent = data.message || data.error;
+    });
+
+    // Add offer
+    document.getElementById('offerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const offer = {
+        name: document.getElementById('oname').value,
+        offer_price: document.getElementById('oprice').value,
+        description: document.getElementById('odesc').value,
+        image_url: document.getElementById('oimage').value,
+        category: document.getElementById('ocategory').value,
+        start_date: document.getElementById('ostart').value,
+        end_date: document.getElementById('oend').value
+      };
+
+      const res = await fetch('/api/offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(offer)
+      });
+
+      const data = await res.json();
+      document.getElementById('offerMsg').textContent = data.message || data.error;
+    });
+  </script>
+</body>
+</html>

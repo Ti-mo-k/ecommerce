@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ecommerce</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <nav class="navigationBar">
+      <h1 class="logo">Logo</h1>
+      <ul class="navs">
+        <!-- Welcome message for logged-in users -->
+        <li id="welcomeMsg" style="display:none;"></li>
+        <li><a href="register.html" class="btn" id="registerBtn">Register</a></li>
+        <li><a href="login.html" class="btn" id="loginBtn">Login</a></li>
+        <li><button class="btn" id="logoutBtn" style="display:none;">Logout</button></li>
+        <li><a href="cart.html" class="btn">🛒 Cart</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Offers Section -->
+  <section id="offers" class="offers">
+    <h3>OFFERS</h3>
+    <div class="offers-row" id="offersRow">
+      <!-- Offer cards (existing static ones) -->
+    </div>
+  </section>
+
+  <!-- Dropdown Navbar -->
+  <div class="navbar">
+    <button id="menuButton">PRODUCTS ▼</button>
+    <ul id="menu" hidden>
+      <li onclick="showCategory('clothes')">Clothes</li>
+      <li onclick="showCategory('furniture')">Furniture</li>
+      <li onclick="showCategory('electronics')">Electronics</li>
+      <li onclick="showCategory('grocery')">Grocery</li>
+    </ul>
+  </div>  
+
+  <!-- Dynamic product display section -->
+  <section id="product-section"></section>
+
+  <script src="index.js"></script>
+  <script>
+    // // Check login status
+    // fetch('/check-login')
+    //   .then(res => res.json())
+    //   .then(data => {
+    //     if (data.loggedIn) {
+    //       // Show welcome message
+    //       document.getElementById('welcomeMsg').innerText = `Welcome, ${data.user.name}`;
+    //       document.getElementById('welcomeMsg').style.display = 'inline';
+          
+    //       // Show logout button
+    //       document.getElementById('logoutBtn').style.display = 'inline';
+          
+    //       // Hide register/login buttons
+    //       document.getElementById('registerBtn').style.display = 'none';
+    //       document.getElementById('loginBtn').style.display = 'none';
+    //     }
+    //   });
+
+    // // Logout button
+    // document.getElementById('logoutBtn').addEventListener('click', () => {
+    //   window.location.href = '/logout';
+    // });
+  </script>
+</body>
+</html>
+
