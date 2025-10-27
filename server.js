@@ -45,10 +45,10 @@ const db = mysql.createPool({
    queueLimit: 0,
 } );
 
-db.connect(err => {
-    if (err) console.log('Database connection error:', err.message);
-    else console.log('Connected to database');
-});
+// db.connect(err => {
+//     if (err) console.log('Database connection error:', err.message);
+//     else console.log('Connected to database');
+// });
 
 // create users table
 const UserTable = `
