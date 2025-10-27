@@ -24,13 +24,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.set('trust proxy', 1); // if behind a proxy like Render
 
-app.use(session({
-    secret: process.env.SECRET_KEY,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 30 * 60 * 1000 }
-}));
-
 
 
 // database connection
@@ -41,9 +34,20 @@ const db = mysql.createPool({
    database:process.env.MYSQL_ADDON_DB,
    port: process.env.MYSQL_ADDON_PORT,
    waitForConnections: true,
-   connectionLimit: 10,
+   connectionLimit: 5,
    queueLimit: 0,
 } );
+
+const MySQLStore = require('express-mysql-session')(session);
+const sessionStore = new MySQLStore({}, db.promise()); // using pool
+
+app.use(session({
+    secret: process.env.SECRET_KEY,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production', maxAge: 30 * 60 * 1000 }
+}));
 
 // db.connect(err => {
 //     if (err) console.log('Database connection error:', err.message);
