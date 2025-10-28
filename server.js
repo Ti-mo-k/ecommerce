@@ -111,9 +111,9 @@ CREATE TABLE IF NOT EXISTS cart (
   user_id INT NOT NULL,
   product_id INT NOT NULL,
   quantity INT DEFAULT 1,
+  type ENUM('product','offer') NOT NULL DEFAULT 'product',
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-  UNIQUE KEY unique_cart(user_id, product_id)
+  UNIQUE KEY unique_cart(user_id, product_id, type)
 );
 `;
 
@@ -183,7 +183,7 @@ app.post('/register',
             if (err) return res.status(500).send('Database error');
             if (results.length > 0) return res.status(400).json({ error: 'Email already exists' });
 
-            db.query('INSERT INTO users SET ?', { name, email, password: hashedPassword ,role: 'user'}, (err) => {
+            db.query('INSERT INTO users SET ?', { name, email, password: hashedPassword ,role: 'user'}, (err, result) => {
                 if (err) return res.status(500).send('Database error');
                 // Auto-login
                 req.session.user = { id: result.insertId, name, email, role: 'user' };
@@ -207,22 +207,41 @@ app.post('/login', async (req, res) => {
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(400).json({ error: 'Invalid email or password' });
 
-        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role }; 
+        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
 
+        // Merge guest cart if present
         if (Array.isArray(guestCart) && guestCart.length > 0) {
-    const values = guestCart.map(i => [user.id, i.id, i.quantity]);
-    const sql = `
-        INSERT INTO cart (user_id, product_id, quantity)
-        VALUES ?
-        ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
-    `;
-    db.query(sql, [values], (mergeErr) => {
-        if (mergeErr) console.error('Error merging cart:', mergeErr.message);
-    });
-}
-        return res.status(200).json({ message: 'Login successful' });
+            const values = guestCart
+                .filter(i => i.id && i.quantity > 0 && i.type)
+                .map(i => [user.id, i.id, i.quantity, i.type]);
+
+            if (values.length > 0) {
+                const sql = `
+                    INSERT INTO cart (user_id, product_id, quantity, type)
+                    VALUES ?
+                    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+                `;
+                db.query(sql, [values], (err) => {
+                    if (err) console.error('Cart merge failed:', err);
+                    fetchUpdatedCart(user.id, res);
+                });
+                return;
+            }
+        }
+
+        // If no guest cart to merge
+        fetchUpdatedCart(user.id, res);
     });
 });
+
+// Helper function to fetch cart and respond
+function fetchUpdatedCart(userId, res) {
+    db.query('SELECT * FROM cart WHERE user_id = ?', [userId], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Failed to fetch cart' });
+        res.status(200).json({ message: 'Login successful', cart: results });
+    });
+}
+
 
 // Forgot Password
 app.post('/forgot-password', async (req, res) => {
@@ -287,16 +306,21 @@ app.post('/reset-password/:token', async (req, res) => {
 app.get('/api/cart', checkAuth, (req, res) => {
     const user_id = req.session.user.id;
     const sql = `
-        SELECT c.quantity, p.id, p.name, p.price, p.image_url
-        FROM cart c
-        JOIN products p ON c.product_id = p.id
-        WHERE c.user_id = ?
+      SELECT c.quantity, c.type, 
+             CASE WHEN c.type='product' THEN p.name ELSE o.name END AS name,
+             CASE WHEN c.type='product' THEN p.price ELSE o.offer_price END AS price,
+             CASE WHEN c.type='product' THEN p.image_url ELSE o.image_url END AS image_url
+      FROM cart c
+      LEFT JOIN products p ON c.type='product' AND c.product_id = p.id
+      LEFT JOIN offers o ON c.type='offer' AND c.product_id = o.id
+      WHERE c.user_id = ?
     `;
     db.query(sql, [user_id], (err, results) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         res.json(results);
     });
 });
+
 
 // Merge guest cart into user cart
 app.post('/api/cart/merge', checkAuth, (req, res) => {
@@ -319,31 +343,43 @@ app.post('/api/cart/merge', checkAuth, (req, res) => {
 
 // Update item quantity
 app.post('/api/cart/update', checkAuth, (req, res) => {
-    const { productId, change } = req.body;
+    const { productId, type, change } = req.body; // <-- include type
     const user_id = req.session.user.id;
 
+    if (!type || !['product','offer'].includes(type)) {
+        return res.status(400).json({ error: 'Invalid type' });
+    }
+
     const sql = `
-        INSERT INTO cart (user_id, product_id, quantity)
-        VALUES (?, ?, ?)
+        INSERT INTO cart (user_id, product_id, quantity, type)
+        VALUES (?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
     `;
-    db.query(sql, [user_id, productId, change], (err) => {
+
+    db.query(sql, [user_id, productId, change, type], (err) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         res.json({ message: 'Quantity updated' });
     });
 });
 
+
+// Remove item from cart
 // Remove item from cart
 app.post('/api/cart/remove', checkAuth, (req, res) => {
-    const { productId } = req.body;
+    const { productId, type } = req.body; // <-- include type
     const user_id = req.session.user.id;
 
-    const sql = `DELETE FROM cart WHERE user_id = ? AND product_id = ?`;
-    db.query(sql, [user_id, productId], (err) => {
+    if (!type || !['product','offer'].includes(type)) {
+        return res.status(400).json({ error: 'Invalid type' });
+    }
+
+    const sql = `DELETE FROM cart WHERE user_id = ? AND product_id = ? AND type = ?`;
+    db.query(sql, [user_id, productId, type], (err) => {
         if (err) return res.status(500).json({ error: 'Database error' });
         res.json({ message: 'Item removed' });
     });
 });
+
 
 
 app.post('/api/products', checkAdmin, (req, res) => {

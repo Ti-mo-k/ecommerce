@@ -35,21 +35,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
 
-            if (response.ok) {
-                message.textContent = data.message || 'Login successful!';
-                message.style.display = 'block';
+if (response.ok) {
+    message.textContent = data.message || 'Login successful!';
+    message.style.display = 'block';
 
-                // ✅ Clear guest cart after successful merge
-                localStorage.removeItem('cart');
+    // Clear guest cart after successful merge
+    localStorage.removeItem('cart');
 
-                login.reset();
-                setTimeout(() => {
-                    window.location.href = '/home';
-                }, 200);
-            } else {
-                message.textContent = data.error || 'Login failed';
-                message.style.display = 'block';
-            }
+    // If server returned merged cart, render it immediately
+    if (data.cart && Array.isArray(data.cart)) {
+        renderCart(data.cart);  // <-- render the merged cart
+    }
+
+    login.reset();
+
+    // Redirect immediately
+    window.location.href = '/home';
+} else {
+    message.textContent = data.error || 'Login failed';
+    message.style.display = 'block';
+}
+
         } catch (err) {
             console.error('Error logging in', err);
             message.textContent = 'An error occurred during login.';

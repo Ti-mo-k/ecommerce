@@ -1,18 +1,20 @@
 // === Cart functions ===
-function addToCart(name, price) {
+function addToCart(id, name, price, type = 'product') {
   let cart = JSON.parse(localStorage.getItem("cart")) || [];
   price = Number(price);
-  let existing = cart.find(item => item.name === name);
 
+  let existing = cart.find(item => item.id === id && item.type === type);
   if (existing) {
     existing.quantity += 1;
   } else {
-    cart.push({ name, price, quantity: 1 });
+    cart.push({ id, name, price, quantity: 1, type });
   }
 
   localStorage.setItem("cart", JSON.stringify(cart));
   alert(`${name} added to cart`);
 }
+
+
 
 function checkOut() {
   window.location.href = "cart.html";
@@ -43,8 +45,7 @@ async function loadCategory(category) {
           <img src="${item.image_url}" alt="${item.name}">
           <h3>${item.name}</h3>
           <p>KES ${item.price}</p>
-          <button onclick="addToCart('${item.name}', ${item.price})">Add to Cart</button>
-        </div>
+          <button onclick="addToCart(${item.id}, '${item.name}', ${item.price}, 'product')">Add to Cart</button>        </div>
       `).join('')}
     </div>
   `;
@@ -69,8 +70,7 @@ async function loadOffers() {
       <img src="${offer.image_url}" alt="${offer.name}">
       <h2>${offer.description}</h2>
       <p>Offer Price: KES ${offer.offer_price}</p>
-      <button onclick="addToCart('${offer.name}', ${offer.offer_price})">Add to cart</button>
-    `;
+<button onclick="addToCart(${offer.id}, '${offer.name}', ${offer.offer_price}, 'offer')">Add to Cart</button>    `;
     container.appendChild(card);
   });
 }

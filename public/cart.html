@@ -115,39 +115,40 @@ function renderCart(cart) {
     }
 
     cart.forEach((item, index) => {
-        let subtotal = item.price * item.quantity;
-        total += subtotal;
+    let subtotal = item.price * item.quantity;
+    total += subtotal;
 
-        container.innerHTML += `
-            <div class="cart-item">
-                <span>${item.name}</span>
-                <span>KES ${item.price}</span>
-                <span>
-                    Qty: 
-                    <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
-                    ${item.quantity}
-                    <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
-                </span>
-                <span>Subtotal: KES ${subtotal}</span>
-                <button onclick="removeItem(${item.id})">Remove</button>
-            </div>
-        `;
-    });
+    container.innerHTML += `
+        <div class="cart-item">
+            <span>${item.name}</span>
+            <span>KES ${item.price}</span>
+            <span>
+                Qty: 
+                <button class="qty-btn" onclick="updateQty(${item.id}, -1, '${item.type}')">-</button>
+                ${item.quantity}
+                <button class="qty-btn" onclick="updateQty(${item.id}, 1, '${item.type}')">+</button>
+            </span>
+            <span>Subtotal: KES ${subtotal}</span>
+            <button onclick="removeItem(${item.id}, '${item.type}')">Remove</button>
+        </div>
+    `;
+});
+
 
     totalDiv.innerHTML = `<h3>Total: KES ${total}</h3>`;
 }
 
 // Add, remove, or update quantity
-async function updateQty(productId, change) {
+async function updateQty(productId, change, type) {
     if (loggedInUser) {
         await fetch('/api/cart/update', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ productId, change })
+            body: JSON.stringify({ productId, change, type })
         });
     } else {
         let cart = JSON.parse(localStorage.getItem("cart")) || [];
-        const index = cart.findIndex(i => i.id === productId);
+        const index = cart.findIndex(i => i.id === productId && i.type === type);
         if (index !== -1) {
             cart[index].quantity += change;
             if (cart[index].quantity < 1) cart.splice(index, 1);
@@ -157,20 +158,22 @@ async function updateQty(productId, change) {
     loadCart();
 }
 
-async function removeItem(productId) {
+
+async function removeItem(productId, type) {
     if (loggedInUser) {
         await fetch('/api/cart/remove', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ productId })
+            body: JSON.stringify({ productId, type })
         });
     } else {
         let cart = JSON.parse(localStorage.getItem("cart")) || [];
-        cart = cart.filter(i => i.id !== productId);
+        cart = cart.filter(i => !(i.id === productId && i.type === type));
         localStorage.setItem("cart", JSON.stringify(cart));
     }
     loadCart();
 }
+
 
 // Checkout
 document.getElementById("checkoutBtn").addEventListener("click", async () => {
