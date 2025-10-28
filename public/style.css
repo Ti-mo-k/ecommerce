@@ -2,11 +2,25 @@ body {
   line-height: 1.6;
   color: #333;
 }
-header {
-  background:rgb(5, 235, 215);
-  color: #fff;
-  padding: 1rem 2rem;
+/* Make header full width */
+header, footer {
+    width: 100%;
+    box-sizing: border-box;
 }
+
+/* Optional: center content with max-width */
+.header-container, .footer-container {
+    max-width: 1200px;  /* adjust as needed */
+    margin: 0 auto;
+    padding: 0 20px;    /* some side padding */
+}
+
+header {
+  background-color: #77dcee; 
+  color: white;
+  padding: 15px 0;
+}
+
 .navigationBar{
     display: flex;
     justify-content: space-between;
@@ -163,4 +177,21 @@ header {
 
 .product-card button:hover {
   background: darkgreen;
+}
+
+/* Footer */
+footer {
+    background-color: #969393;
+    color: white;
+    padding: 15px 0;
+    text-align: center;
+    margin-top: 40px;
+}
+footer a {
+    color: #f4f4f4;
+    text-decoration: none;
+    margin: 0 5px;
+}
+footer a:hover {
+    text-decoration: underline;
 }

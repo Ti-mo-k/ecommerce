@@ -105,6 +105,25 @@ db.query(productsTable, err => {
     else console.log('Product table created');
 });
 
+const cartTable = `
+CREATE TABLE IF NOT EXISTS cart (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  product_id INT NOT NULL,
+  quantity INT DEFAULT 1,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_cart(user_id, product_id)
+);
+`;
+
+db.query(cartTable, err => {
+  if (err) console.log('Error creating cart table:', err.message);
+  else console.log('Cart table created');
+});
+
+
+
 // helper middleware to check authentication
 function checkAuth(req, res, next) {
     if (!req.session.user) res.redirect('/login');
@@ -165,8 +184,11 @@ app.post('/register',
             if (results.length > 0) return res.status(400).json({ error: 'Email already exists' });
 
             db.query('INSERT INTO users SET ?', { name, email, password: hashedPassword ,role: 'user'}, (err) => {
-                if (err) return res.status(500).send('Database error'); 
-                return res.status(201).json({ message: 'Registration successful' });
+                if (err) return res.status(500).send('Database error');
+                // Auto-login
+                req.session.user = { id: result.insertId, name, email, role: 'user' };
+                return res.status(201).json({ message: 'Registration successful, redirecting...', redirect: '/home' }); 
+                
             });
         });
     }
@@ -174,7 +196,7 @@ app.post('/register',
 
 // Login
 app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, guestCart } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
     db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
@@ -185,7 +207,19 @@ app.post('/login', async (req, res) => {
         const match = await bcrypt.compare(password, user.password);
         if (!match) return res.status(400).json({ error: 'Invalid email or password' });
 
-        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+        req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role }; 
+
+        if (Array.isArray(guestCart) && guestCart.length > 0) {
+    const values = guestCart.map(i => [user.id, i.id, i.quantity]);
+    const sql = `
+        INSERT INTO cart (user_id, product_id, quantity)
+        VALUES ?
+        ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+    `;
+    db.query(sql, [values], (mergeErr) => {
+        if (mergeErr) console.error('Error merging cart:', mergeErr.message);
+    });
+}
         return res.status(200).json({ message: 'Login successful' });
     });
 });
@@ -246,6 +280,68 @@ app.post('/reset-password/:token', async (req, res) => {
             if (err) return res.status(500).json({ error: 'Error resetting password' });
             return res.status(200).json({ message: 'Password has been reset' });
         });
+    });
+});
+
+// Get user cart
+app.get('/api/cart', checkAuth, (req, res) => {
+    const user_id = req.session.user.id;
+    const sql = `
+        SELECT c.quantity, p.id, p.name, p.price, p.image_url
+        FROM cart c
+        JOIN products p ON c.product_id = p.id
+        WHERE c.user_id = ?
+    `;
+    db.query(sql, [user_id], (err, results) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json(results);
+    });
+});
+
+// Merge guest cart into user cart
+app.post('/api/cart/merge', checkAuth, (req, res) => {
+    const user_id = req.session.user.id;
+    const { items } = req.body;
+
+    if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid cart data' });
+
+    const values = items.map(i => [user_id, i.id, i.quantity]);
+    const sql = `
+        INSERT INTO cart (user_id, product_id, quantity)
+        VALUES ?
+        ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+    `;
+    db.query(sql, [values], (err) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json({ message: 'Cart merged successfully' });
+    });
+});
+
+// Update item quantity
+app.post('/api/cart/update', checkAuth, (req, res) => {
+    const { productId, change } = req.body;
+    const user_id = req.session.user.id;
+
+    const sql = `
+        INSERT INTO cart (user_id, product_id, quantity)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+    `;
+    db.query(sql, [user_id, productId, change], (err) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json({ message: 'Quantity updated' });
+    });
+});
+
+// Remove item from cart
+app.post('/api/cart/remove', checkAuth, (req, res) => {
+    const { productId } = req.body;
+    const user_id = req.session.user.id;
+
+    const sql = `DELETE FROM cart WHERE user_id = ? AND product_id = ?`;
+    db.query(sql, [user_id, productId], (err) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json({ message: 'Item removed' });
     });
 });
 

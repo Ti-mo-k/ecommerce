@@ -67,11 +67,44 @@ header h2 {
 </div>
 
 <script>
-// Load Cart
-function loadCart() {
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    let container = document.getElementById("cartItems");
-    let totalDiv = document.getElementById("cartTotal");
+// Check if user is logged in
+let loggedInUser = null;
+
+async function checkLogin() {
+    try {
+        const res = await fetch('/check-login');
+        const data = await res.json();
+        loggedInUser = data.loggedIn ? data.user : null;
+    } catch (err) {
+        console.error("Login check failed", err);
+    }
+}
+
+// Load cart (guest or user)
+async function loadCart() {
+    await checkLogin();
+
+    let cart = [];
+    if (loggedInUser) {
+        // Logged-in user: fetch from server
+        try {
+            const res = await fetch('/api/cart');
+            cart = await res.json();
+        } catch (err) {
+            console.error("Failed to load user cart", err);
+        }
+    } else {
+        // Guest: localStorage
+        cart = JSON.parse(localStorage.getItem("cart")) || [];
+    }
+
+    renderCart(cart);
+}
+
+// Render cart items
+function renderCart(cart) {
+    const container = document.getElementById("cartItems");
+    const totalDiv = document.getElementById("cartTotal");
     container.innerHTML = "";
     let total = 0;
 
@@ -91,12 +124,12 @@ function loadCart() {
                 <span>KES ${item.price}</span>
                 <span>
                     Qty: 
-                    <button class="qty-btn" onclick="decreaseQty(${index})">-</button>
+                    <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
                     ${item.quantity}
-                    <button class="qty-btn" onclick="increaseQty(${index})">+</button>
+                    <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
                 </span>
                 <span>Subtotal: KES ${subtotal}</span>
-                <button onclick="removeFromCart(${index})">Remove</button>
+                <button onclick="removeItem(${item.id})">Remove</button>
             </div>
         `;
     });
@@ -104,63 +137,61 @@ function loadCart() {
     totalDiv.innerHTML = `<h3>Total: KES ${total}</h3>`;
 }
 
-// Remove item
-function removeFromCart(index) {
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    cart.splice(index, 1);
-    localStorage.setItem("cart", JSON.stringify(cart));
-    loadCart();
-}
-
-// Increase quantity
-function increaseQty(index) {
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    cart[index].quantity += 1;
-    localStorage.setItem("cart", JSON.stringify(cart));
-    loadCart();
-}
-
-// Decrease quantity
-function decreaseQty(index) {
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
-    if(cart[index].quantity > 1){
-        cart[index].quantity -= 1;
+// Add, remove, or update quantity
+async function updateQty(productId, change) {
+    if (loggedInUser) {
+        await fetch('/api/cart/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ productId, change })
+        });
     } else {
-        cart.splice(index, 1); // remove if quantity is 1
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        const index = cart.findIndex(i => i.id === productId);
+        if (index !== -1) {
+            cart[index].quantity += change;
+            if (cart[index].quantity < 1) cart.splice(index, 1);
+        }
+        localStorage.setItem("cart", JSON.stringify(cart));
     }
-    localStorage.setItem("cart", JSON.stringify(cart));
     loadCart();
 }
 
-// Proceed to checkout
+async function removeItem(productId) {
+    if (loggedInUser) {
+        await fetch('/api/cart/remove', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ productId })
+        });
+    } else {
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        cart = cart.filter(i => i.id !== productId);
+        localStorage.setItem("cart", JSON.stringify(cart));
+    }
+    loadCart();
+}
+
+// Checkout
 document.getElementById("checkoutBtn").addEventListener("click", async () => {
-    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    await checkLogin();
+    let cart = loggedInUser ? await (await fetch('/api/cart')).json() : JSON.parse(localStorage.getItem("cart")) || [];
+
     if (cart.length === 0) {
         alert("Your cart is empty.");
         return;
     }
 
-    try {
-        const response = await fetch('/check-login');
-        const data = await response.json();
-
-        if (!data.loggedIn) {
-            alert("Please login to proceed to checkout.");
-            window.location.href = "login.html";
-        } else {
-            // pass total amount if you want
-            const total = cart.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
-            sessionStorage.setItem('totalAmount', total); 
-            window.location.href = "checkout.html";
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Error checking login status.");
+    if (!loggedInUser) {
+        alert("Please login to proceed to checkout.");
+        window.location.href = "login.html";
+    } else {
+        window.location.href = "checkout.html";
     }
 });
 
 window.onload = loadCart;
-
 </script>
+
 </body>
 </html>
