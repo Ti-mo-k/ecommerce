@@ -28,7 +28,7 @@ async function stkPush(phone, amount) {
     Password: password,
     Timestamp: timestamp,
     TransactionType: "CustomerPayBillOnline",
-    Amount: amount,
+    Amount: Math.round(amount), // Ensure amount is an integer
     PartyA: phone,
     PartyB: shortcode,
     PhoneNumber: phone,
@@ -43,9 +43,14 @@ async function stkPush(phone, amount) {
       data,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    console.log("✅ STK Push Success:", response.data);
+    console.log("✅ STK Push Response:", response.data);
+    if (response.data.ResponseCode !== '0') {
+      throw new Error(`STK Push failed: ${response.data.ResponseDescription || response.data.errorMessage || 'Unknown error'}`);
+    }
+    return response.data; // Return the response data
   } catch (err) {
     console.error("❌ STK Push Failed:", err.response?.data || err.message);
+    throw err; // Re-throw the error to propagate it
   }
 }
 

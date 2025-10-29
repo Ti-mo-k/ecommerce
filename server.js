@@ -495,7 +495,11 @@ app.get('/api/offers', (req, res) => {
 
 
 app.post("/api/stkpush", async (req, res) => {
-  const { phone, total } = req.body; // from frontend form
+  const { phone, total, name, address } = req.body; // from frontend form
+
+  if (!phone || !total || !name || !address) {
+    return res.status(400).json({ success: false, message: "Missing required fields: phone, total, name, address" });
+  }
 
   try {
     const result = await stkPush(phone, total);

@@ -26,10 +26,11 @@
   </div>
 
   <script>
+    let cart = [];
+    let total = 0;
+
     // 1️⃣ Load total from cart
     async function loadCheckout() {
-      let cart = [];
-      let total = 0;
 
       // Check if user is logged in
       try {
@@ -79,7 +80,11 @@
         });
 
         const data = await response.json();
-        alert(data.message || "STK Push Sent! Check your phone to complete payment.");
+        if (data.success) {
+          alert(data.message || "STK Push Sent! Check your phone to complete payment.");
+        } else {
+          alert(data.message || "Payment request failed.");
+        }
       } catch (err) {
         console.error(err);
         alert("Payment request failed.");
