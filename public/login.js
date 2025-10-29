@@ -43,11 +43,6 @@ if (response.ok) {
     // Clear guest cart after successful merge
     localStorage.removeItem('cart');
 
-    // If server returned merged cart, render it immediately
-    if (data.cart && Array.isArray(data.cart)) {
-        renderCart(data.cart);  // <-- render the merged cart
-    }
-
     login.reset();
 
     // Redirect immediately
