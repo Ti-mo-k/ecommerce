@@ -227,18 +227,26 @@ app.post('/login', async (req, res) => {
                     VALUES ?
                     ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
                 `;
-                db.query(sql, [values], (err) => {
-                    if (err) console.error('Cart merge failed:', err);
-                    fetchUpdatedCart(user.id, res);
-                });
-                return;
+
+                try {
+                    await new Promise((resolve, reject) => {
+                        db.query(sql, [values], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    });
+                } catch (err) {
+                    console.error('Cart merge failed:', err);
+                    return res.status(500).json({ error: 'Cart merge failed' });
+                }
             }
         }
 
-        // If no guest cart to merge
+        // Fetch updated cart and respond
         fetchUpdatedCart(user.id, res);
     });
 });
+
 
 // Helper function to fetch cart and respond
 function fetchUpdatedCart(userId, res) {

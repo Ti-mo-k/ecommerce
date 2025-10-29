@@ -72,7 +72,7 @@ let loggedInUser = null;
 
 async function checkLogin() {
     try {
-        const res = await fetch('/check-login');
+        const res = await fetch('/check-login', {credentials:"include"});
         const data = await res.json();
         loggedInUser = data.loggedIn ? data.user : null;
     } catch (err) {
@@ -88,7 +88,7 @@ async function loadCart() {
     if (loggedInUser) {
         // Logged-in user: fetch from server
         try {
-            const res = await fetch('/api/cart');
+            const res = await fetch('/api/cart', {credentials:'include'});
             cart = await res.json();
         } catch (err) {
             console.error("Failed to load user cart", err);
@@ -144,6 +144,7 @@ async function updateQty(productId, change, type) {
         await fetch('/api/cart/update', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials:"include",
             body: JSON.stringify({ productId, change, type })
         });
     } else {
@@ -164,6 +165,7 @@ async function removeItem(productId, type) {
         await fetch('/api/cart/remove', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials:"include",
             body: JSON.stringify({ productId, type })
         });
     } else {
@@ -178,7 +180,7 @@ async function removeItem(productId, type) {
 // Checkout
 document.getElementById("checkoutBtn").addEventListener("click", async () => {
     await checkLogin();
-    let cart = loggedInUser ? await (await fetch('/api/cart')).json() : JSON.parse(localStorage.getItem("cart")) || [];
+    let cart = loggedInUser ? await (await fetch('/api/cart',{credentials:"include"})).json() : JSON.parse(localStorage.getItem("cart")) || [];
 
     if (cart.length === 0) {
         alert("Your cart is empty.");
