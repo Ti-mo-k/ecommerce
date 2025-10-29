@@ -137,8 +137,16 @@ db.query(cartTable, err => {
 
 // helper middleware to check authentication
 function checkAuth(req, res, next) {
-    if (!req.session.user) res.redirect('/login');
-    else next();
+    if (!req.session.user) {
+        // For API requests, return JSON error
+        if (req.headers.accept && req.headers.accept.includes('application/json')) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+        // For page requests, redirect
+        res.redirect('/login');
+    } else {
+        next();
+    }
 }
 
 function checkAdmin(req, res, next) {
@@ -324,7 +332,7 @@ app.post('/reset-password/:token', async (req, res) => {
 app.get('/api/cart', checkAuth, (req, res) => {
     const user_id = req.session.user.id;
     const sql = `
-      SELECT c.quantity, c.type, 
+      SELECT c.product_id AS id, c.quantity, c.type,
              CASE WHEN c.type='product' THEN p.name ELSE o.name END AS name,
              CASE WHEN c.type='product' THEN p.price ELSE o.offer_price END AS price,
              CASE WHEN c.type='product' THEN p.image_url ELSE o.image_url END AS image_url
@@ -334,7 +342,11 @@ app.get('/api/cart', checkAuth, (req, res) => {
       WHERE c.user_id = ?
     `;
     db.query(sql, [user_id], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
+        if (err) {
+            console.error('DB error in get cart:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        console.log('Cart results:', results);
         res.json(results);
     });
 });
@@ -347,9 +359,13 @@ app.post('/api/cart/merge', checkAuth, (req, res) => {
 
     if (!Array.isArray(items)) return res.status(400).json({ error: 'Invalid cart data' });
 
-    const values = items.map(i => [user_id, i.id, i.quantity]);
+    const values = items
+        .filter(i => i.id && i.quantity > 0 && i.type && ['product','offer'].includes(i.type))
+        .map(i => [user_id, i.id, i.quantity, i.type]);
+    if (values.length === 0) return res.status(400).json({ error: 'No valid items to merge' });
+
     const sql = `
-        INSERT INTO cart (user_id, product_id, quantity)
+        INSERT INTO cart (user_id, product_id, quantity, type)
         VALUES ?
         ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
     `;
@@ -364,8 +380,10 @@ app.post('/api/cart/update', checkAuth, (req, res) => {
     const { productId, type, change } = req.body; // <-- include type
     const user_id = req.session.user.id;
 
-    if (!type || !['product','offer'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid type' });
+    console.log('Updating quantity:', { user_id, productId, type, change });
+
+    if (!productId || !type || change == null || !['product','offer'].includes(type) || typeof change !== 'number' || typeof productId !== 'number') {
+        return res.status(400).json({ error: 'Invalid parameters' });
     }
 
     const sql = `
@@ -374,26 +392,53 @@ app.post('/api/cart/update', checkAuth, (req, res) => {
         ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
     `;
 
-    db.query(sql, [user_id, productId, change, type], (err) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
-        res.json({ message: 'Quantity updated' });
+    db.query(sql, [user_id, productId, change, type], (err, result) => {
+        if (err) {
+            console.error('DB error in update:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        // After update, check if quantity <= 0 and delete if so
+        const checkSql = `SELECT quantity FROM cart WHERE user_id = ? AND product_id = ? AND type = ?`;
+        db.query(checkSql, [user_id, productId, type], (err, results) => {
+            if (err) {
+                console.error('DB error in check:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            if (results.length > 0 && results[0].quantity <= 0) {
+                const deleteSql = `DELETE FROM cart WHERE user_id = ? AND product_id = ? AND type = ?`;
+                db.query(deleteSql, [user_id, productId, type], (err) => {
+                    if (err) {
+                        console.error('DB error in delete:', err);
+                        return res.status(500).json({ error: 'Database error' });
+                    }
+                    console.log('Item removed due to quantity <=0');
+                });
+            }
+            res.json({ message: 'Quantity updated' });
+        });
     });
 });
 
 
 // Remove item from cart
-// Remove item from cart
 app.post('/api/cart/remove', checkAuth, (req, res) => {
     const { productId, type } = req.body; // <-- include type
     const user_id = req.session.user.id;
 
-    if (!type || !['product','offer'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid type' });
+    console.log('Removing item:', { user_id, productId, type });
+
+    if (!productId || !type || !['product','offer'].includes(type) || typeof productId !== 'number') {
+        return res.status(400).json({ error: 'Invalid parameters' });
     }
 
     const sql = `DELETE FROM cart WHERE user_id = ? AND product_id = ? AND type = ?`;
-    db.query(sql, [user_id, productId, type], (err) => {
-        if (err) return res.status(500).json({ error: 'Database error' });
+    db.query(sql, [user_id, productId, type], (err, result) => {
+        if (err) {
+            console.error('DB error:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        console.log('Deleted rows:', result.affectedRows);
         res.json({ message: 'Item removed' });
     });
 });

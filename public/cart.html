@@ -79,8 +79,10 @@ async function loadCart() {
     if (loginData.loggedIn) {
         const res = await fetch('/api/cart', {credentials:'include'});
         cart = await res.json();
+        console.log('Loaded cart from API:', cart);
     } else {
         cart = JSON.parse(localStorage.getItem('cart')) || [];
+        console.log('Loaded cart from localStorage:', cart);
     }
 
     if (cart.length === 0) {
@@ -121,12 +123,15 @@ async function updateQty(productId, change, type) {
     const loginData = await loginRes.json();
 
     if (loginData.loggedIn) {
-        await fetch('/api/cart/update', {
+        const res = await fetch('/api/cart/update', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             credentials: 'include',
             body: JSON.stringify({ productId, change, type })
         });
+        if (!res.ok) {
+            console.error('Update failed:', await res.text());
+        }
     } else {
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
         const index = cart.findIndex(i => i.id === productId && i.type === type);
@@ -140,16 +145,20 @@ async function updateQty(productId, change, type) {
 }
 
 async function removeItem(productId, type) {
+    console.log('removeItem called with:', productId, type);
     const loginRes = await fetch('/check-login', {credentials:'include'});
     const loginData = await loginRes.json();
 
     if (loginData.loggedIn) {
-        await fetch('/api/cart/remove', {
+        const res = await fetch('/api/cart/remove', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             credentials: 'include',
             body: JSON.stringify({ productId, type })
         });
+        if (!res.ok) {
+            console.error('Remove failed:', await res.text());
+        }
     } else {
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
         cart = cart.filter(i => !(i.id === productId && i.type === type));
