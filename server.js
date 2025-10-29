@@ -8,6 +8,7 @@ const path = require('path');
 const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const cors = require('cors');
 require("dotenv").config()
 const stkPush = require('./stkPush');
 
@@ -16,6 +17,10 @@ const stkPush = require('./stkPush');
 const app = express();
 
 // middleware
+app.use(cors({
+    origin: true, // Allow all origins for now
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
