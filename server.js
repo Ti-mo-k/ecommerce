@@ -243,18 +243,17 @@ app.post('/login', async (req, res) => {
         }
 
         // Fetch updated cart and respond
-        fetchUpdatedCart(user.id, res);
+        db.query('SELECT * FROM cart WHERE user_id = ?', [user.id], (err, results) => {
+            if (err) return res.status(500).json({ error: 'Failed to fetch cart' });
+            res.status(200).json({ 
+                message: 'Login successful', 
+                user: { id: user.id, name: user.name, email: user.email, role: user.role },
+                cart: results 
+            });
+        });
     });
 });
 
-
-// Helper function to fetch cart and respond
-function fetchUpdatedCart(userId, res) {
-    db.query('SELECT * FROM cart WHERE user_id = ?', [userId], (err, results) => {
-        if (err) return res.status(500).json({ error: 'Failed to fetch cart' });
-        res.status(200).json({ message: 'Login successful', cart: results });
-    });
-}
 
 
 // Forgot Password
