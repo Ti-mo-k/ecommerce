@@ -67,59 +67,38 @@ header h2 {
 </div>
 
 <script>
-// Check if user is logged in
-let loggedInUser = null;
-
-async function checkLogin() {
-    try {
-        const res = await fetch('/check-login', {credentials:"include"});
-        const data = await res.json();
-        loggedInUser = data.loggedIn ? data.user : null;
-    } catch (err) {
-        console.error("Login check failed", err);
-    }
-}
-
-// Load cart (guest or user)
 async function loadCart() {
-    await checkLogin();
+    const cartContainer = document.getElementById('cartItems');
+    const cartTotalDiv = document.getElementById('cartTotal');
 
+    // Check login
+    const loginRes = await fetch('/check-login', {credentials:'include'});
+    const loginData = await loginRes.json();
     let cart = [];
-    if (loggedInUser) {
-        // Logged-in user: fetch from server
-        try {
-            const res = await fetch('/api/cart', {credentials:'include'});
-            cart = await res.json();
-        } catch (err) {
-            console.error("Failed to load user cart", err);
-        }
+
+    if (loginData.loggedIn) {
+        const res = await fetch('/api/cart', {credentials:'include'});
+        cart = await res.json();
     } else {
-        // Guest: localStorage
-        cart = JSON.parse(localStorage.getItem("cart")) || [];
+        cart = JSON.parse(localStorage.getItem('cart')) || [];
     }
-
-    renderCart(cart);
-}
-
-// Render cart items
-function renderCart(cart) {
-    const container = document.getElementById("cartItems");
-    const totalDiv = document.getElementById("cartTotal");
-    container.innerHTML = "";
-    let total = 0;
 
     if (cart.length === 0) {
-        container.innerHTML = "<p>Your cart is empty</p>";
-        totalDiv.innerHTML = "";
+        cartContainer.innerHTML = '<p>Your cart is empty</p>';
+        cartTotalDiv.innerHTML = '';
         return;
     }
 
-    cart.forEach((item, index) => {
-    let subtotal = item.price * item.quantity;
-    total += subtotal;
+    let total = 0;
+    cartContainer.innerHTML = '';
 
-    container.innerHTML += `
-        <div class="cart-item">
+    cart.forEach(item => {
+        const subtotal = item.price * item.quantity;
+        total += subtotal;
+
+        const div = document.createElement('div');
+        div.classList.add('cart-item');
+        div.innerHTML = `
             <span>${item.name}</span>
             <span>KES ${item.price}</span>
             <span>
@@ -130,68 +109,74 @@ function renderCart(cart) {
             </span>
             <span>Subtotal: KES ${subtotal}</span>
             <button onclick="removeItem(${item.id}, '${item.type}')">Remove</button>
-        </div>
-    `;
-});
+        `;
+        cartContainer.appendChild(div);
+    });
 
-
-    totalDiv.innerHTML = `<h3>Total: KES ${total}</h3>`;
+    cartTotalDiv.innerHTML = `<h3>Total: KES ${total}</h3>`;
 }
 
-// Add, remove, or update quantity
 async function updateQty(productId, change, type) {
-    if (loggedInUser) {
+    const loginRes = await fetch('/check-login', {credentials:'include'});
+    const loginData = await loginRes.json();
+
+    if (loginData.loggedIn) {
         await fetch('/api/cart/update', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials:"include",
+            headers: {'Content-Type':'application/json'},
+            credentials: 'include',
             body: JSON.stringify({ productId, change, type })
         });
     } else {
-        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
         const index = cart.findIndex(i => i.id === productId && i.type === type);
         if (index !== -1) {
             cart[index].quantity += change;
             if (cart[index].quantity < 1) cart.splice(index, 1);
         }
-        localStorage.setItem("cart", JSON.stringify(cart));
+        localStorage.setItem('cart', JSON.stringify(cart));
     }
     loadCart();
 }
 
-
 async function removeItem(productId, type) {
-    if (loggedInUser) {
+    const loginRes = await fetch('/check-login', {credentials:'include'});
+    const loginData = await loginRes.json();
+
+    if (loginData.loggedIn) {
         await fetch('/api/cart/remove', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials:"include",
+            headers: {'Content-Type':'application/json'},
+            credentials: 'include',
             body: JSON.stringify({ productId, type })
         });
     } else {
-        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
         cart = cart.filter(i => !(i.id === productId && i.type === type));
-        localStorage.setItem("cart", JSON.stringify(cart));
+        localStorage.setItem('cart', JSON.stringify(cart));
     }
     loadCart();
 }
 
+// Checkout button
+document.getElementById('checkoutBtn').addEventListener('click', async () => {
+    const loginRes = await fetch('/check-login', {credentials:'include'});
+    const loginData = await loginRes.json();
 
-// Checkout
-document.getElementById("checkoutBtn").addEventListener("click", async () => {
-    await checkLogin();
-    let cart = loggedInUser ? await (await fetch('/api/cart',{credentials:"include"})).json() : JSON.parse(localStorage.getItem("cart")) || [];
+    let cart = loginData.loggedIn 
+        ? await (await fetch('/api/cart', {credentials:'include'})).json() 
+        : JSON.parse(localStorage.getItem('cart')) || [];
 
     if (cart.length === 0) {
-        alert("Your cart is empty.");
+        alert('Your cart is empty.');
         return;
     }
 
-    if (!loggedInUser) {
-        alert("Please login to proceed to checkout.");
-        window.location.href = "login.html";
+    if (!loginData.loggedIn) {
+        alert('Please login to proceed to checkout.');
+        window.location.href = '/login';
     } else {
-        window.location.href = "checkout.html";
+        window.location.href = '/checkout.html';
     }
 });
 
