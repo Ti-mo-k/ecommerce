@@ -1,17 +1,36 @@
 // === Cart functions ===
-function addToCart(id, name, price, type = 'product') {
-  let cart = JSON.parse(localStorage.getItem("cart")) || [];
+async function addToCart(id, name, price, type = 'product') {
   price = Number(price);
 
-  let existing = cart.find(item => item.id === id && item.type === type);
-  if (existing) {
-    existing.quantity += 1;
-  } else {
-    cart.push({ id, name, price, quantity: 1, type });
-  }
+  // Check if user is logged in
+  const loginRes = await fetch('/check-login', {credentials: 'include'});
+  const loginData = await loginRes.json();
 
-  localStorage.setItem("cart", JSON.stringify(cart));
-  alert(`${name} added to cart`);
+  if (loginData.loggedIn) {
+    // Add to server cart
+    const res = await fetch('/api/cart/update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({ productId: id, change: 1, type })
+    });
+    if (res.ok) {
+      alert(`${name} added to cart`);
+    } else {
+      alert('Failed to add to cart');
+    }
+  } else {
+    // Add to localStorage cart
+    let cart = JSON.parse(localStorage.getItem("cart")) || [];
+    let existing = cart.find(item => item.id === id && item.type === type);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      cart.push({ id, name, price, quantity: 1, type });
+    }
+    localStorage.setItem("cart", JSON.stringify(cart));
+    alert(`${name} added to cart`);
+  }
 }
 
 
