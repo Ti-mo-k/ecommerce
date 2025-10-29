@@ -27,9 +27,33 @@
 
   <script>
     // 1️⃣ Load total from cart
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    document.getElementById("totalDisplay").innerText = `Total: KES ${total}`;
+    async function loadCheckout() {
+      let cart = [];
+      let total = 0;
+
+      // Check if user is logged in
+      try {
+        const loginRes = await fetch('/check-login', {credentials: 'include'});
+        const loginData = await loginRes.json();
+
+        if (loginData.loggedIn) {
+          // Fetch user cart from server
+          const cartRes = await fetch('/api/cart', {credentials: 'include'});
+          cart = await cartRes.json();
+        } else {
+          // Use guest cart from localStorage
+          cart = JSON.parse(localStorage.getItem("cart")) || [];
+        }
+      } catch (err) {
+        console.error('Error loading cart for checkout:', err);
+        cart = JSON.parse(localStorage.getItem("cart")) || [];
+      }
+
+      total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      document.getElementById("totalDisplay").innerText = `Total: KES ${total}`;
+    }
+
+    loadCheckout();
 
     // 2️⃣ Handle form submit
     document.getElementById("checkoutForm").addEventListener("submit", async (e) => {
